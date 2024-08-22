@@ -1,0 +1,101 @@
+{% extends "network/layout.html" %}
+
+{% load static %}
+
+{% block body %}
+
+<script>
+    function likeHandler(id, youLiked) {
+        let liked = null;
+        if (youLiked.indexOf(id) >= 0) {
+            liked = true;
+        } else {
+            liked = false;
+        }
+
+        if (liked == true) {
+            fetch(`/remove_like/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(result.message);
+                // Update the UI to reflect the change
+                document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.remove('liked');
+                // Remove the post ID from the youLiked array
+                youLiked.splice(youLiked.indexOf(id), 1);
+            });
+        } else {
+            fetch(`/add_like/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(result.message);
+                // Update the UI to reflect the change
+                document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.add('liked');
+                // Add the post ID to the youLiked array
+                youLiked.push(id);
+            });
+        }
+    }
+</script>
+
+<div>
+    <div class='my-3 mx-5'>
+        {% if user.is_authenticated %}
+            <h2>All</h2>
+            <h4>Geek it</h4>
+            <form class='row g-3' action="{% url 'newPost' %}" method='POST'>
+                {% csrf_token %}
+                <div class="col-md-6">
+                    <textarea name="content" class="form-control"></textarea>
+                    <br/>
+                    <input type="submit" value="Post" class="btn btn-primary px-2 py-1">
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="all-post mx-5 my-3">
+    {% for post in posts_of_the_page %}
+    <div class="card text-bg-dark mb-3" style="max-width: 30rem;">
+        <div class="card-header display-flex">
+            <a href="{% url 'profile' user_id=post.user.id %}">@{{ post.user }}</a>--------{{ post.date }}
+        </div>
+        <div class="card-body">
+            <p class="card-text">{{ post.content }}</p>
+
+            {% if user.is_authenticated %}
+                <!-- Ensure the like status is correctly displayed and updated -->
+                <div id="like-button-{{ post.id }}" onclick="likeHandler({{ post.id }}, {{ youLiked }})" class="like-button">
+                    <div class="heart-bg">
+                        <div class="heart-icon {% if post.id in youLiked %}liked{% endif %}"></div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<nav aria-label="Page navigation example">
+    <ul class="pagination justify-content-center mt-5">
+        {% if posts_of_the_page.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.previous_page_number }}">Previous</a></li>
+        {% endif %}
+
+        {% if posts_of_the_page.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.next_page_number }}">Next</a></li>
+        {% endif %}
+    </ul>
+</nav>
+
+{% endblock %}
