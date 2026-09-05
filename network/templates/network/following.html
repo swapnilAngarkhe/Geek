@@ -3,15 +3,12 @@
 {% block body %}
 
 <script>
-    function likeHandler(id, youLiked) {
-        let liked = null;
-        if (youLiked.indexOf(id) >= 0) {
-            liked = true;
-        } else {
-            liked = false;
-        }
+    let youLikedPosts = {{ youLiked }};
 
-        if (liked == true) {
+    function likeHandler(id) {
+        let liked = youLikedPosts.indexOf(id) >= 0;
+
+        if (liked) {
             fetch(`/remove_like/${id}`, {
                 method: 'POST',
                 headers: {
@@ -21,10 +18,9 @@
             .then(response => response.json())
             .then(result => {
                 console.log(result.message);
-                // Update the UI to reflect the change
                 document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.remove('liked');
-                // Remove the post ID from the youLiked array
-                youLiked.splice(youLiked.indexOf(id), 1);
+                document.getElementById(`like-count-${id}`).innerHTML = result.like_count;
+                youLikedPosts.splice(youLikedPosts.indexOf(id), 1);
             });
         } else {
             fetch(`/add_like/${id}`, {
@@ -36,48 +32,81 @@
             .then(response => response.json())
             .then(result => {
                 console.log(result.message);
-                // Update the UI to reflect the change
                 document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.add('liked');
-                // Add the post ID to the youLiked array
-                youLiked.push(id);
+                document.getElementById(`like-count-${id}`).innerHTML = result.like_count;
+                youLikedPosts.push(id);
             });
         }
     }
 </script>
 
-<h2 class="mx-5">Following</h2>
+<!-- Page Container -->
+<div class="max-w-2xl mx-auto px-4 py-8">
 
-<div class="all-post mx-5 my-3">
-    {% for post in posts_of_the_page %}
-    <div class="card text-bg-dark mb-3" style="max-width: 30rem;">
-        <div class="card-header"> <a href="{% url 'profile' user_id=post.user.id %}">@{{ post.user }}</a>--------{{ post.date }}</div>
-        <div class="card-body">
-            <p class="card-text">{{ post.content }}</p>
+    <!-- ========== PAGE HEADER ========== -->
+    <div data-scroll data-scroll-speed="0.5" class="mb-8">
+        <h1 class="text-3xl font-extrabold tracking-tight flex items-center gap-3">
+            <i class="ph-duotone ph-users-three text-cyan" style="font-size:30px"></i>
+            <span class="bg-gradient-to-r from-cyan to-amber bg-clip-text text-transparent">Following</span>
+        </h1>
+        <p class="text-sm text-muted mt-1">Posts from people you follow</p>
+    </div>
 
-            {% if user.is_authenticated %}
-                <!-- Ensure the like status is correctly displayed and updated -->
-                <div id="like-button-{{ post.id }}" onclick="likeHandler({{ post.id }}, {{ youLiked }})" class="like-button">
+    <!-- ========== POST FEED ========== -->
+    <div class="space-y-5">
+        {% for post in posts_of_the_page %}
+        <div data-scroll class="post-card p-5">
+            <!-- Post Header -->
+            <div class="flex items-center gap-3 mb-3">
+                <div class="avatar-circle avatar-sm">{{ post.user.username.0 }}</div>
+                <div class="flex-1 min-w-0">
+                    <a href="{% url 'profile' user_id=post.user.id %}" class="font-mono text-sm font-medium text-cyan hover:text-amber transition-colors">
+                        @{{ post.user }}
+                    </a>
+                    <p class="text-xs text-muted">{{ post.date }}</p>
+                </div>
+            </div>
+
+            <!-- Post Content -->
+            <p class="text-gray-200 text-[15px] leading-relaxed mb-4 pl-12">{{ post.content }}</p>
+
+            <!-- Post Footer -->
+            <div class="flex items-center justify-between pl-12">
+                {% if user.is_authenticated %}
+                <div id="like-button-{{ post.id }}" onclick="likeHandler({{ post.id }})" class="like-button">
                     <div class="heart-bg">
                         <div class="heart-icon {% if post.id in youLiked %}liked{% endif %}"></div>
                     </div>
+                    <span id="like-count-{{ post.id }}" class="like-count">{{ post.post_like.count }}</span>
                 </div>
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
+        {% empty %}
+        <div data-scroll class="glass-panel p-10 text-center">
+            <i class="ph-duotone ph-binoculars text-muted" style="font-size:48px"></i>
+            <p class="text-muted mt-3">No posts yet. Follow some people to see their posts here!</p>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
-</div>
 
-{% comment %} Pagination {% endcomment %}
-<nav aria-label="Page navigation example">
-    <ul class="pagination justify-content-center mt-5">
+    <!-- ========== PAGINATION ========== -->
+    <div class="flex items-center justify-center gap-4 mt-10 mb-8">
         {% if posts_of_the_page.has_previous %}
-        <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.previous_page_number }}">Previous</a></li>
+        <a href="?page={{ posts_of_the_page.previous_page_number }}" class="pagination-pill">
+            <i class="ph-bold ph-caret-left" style="font-size:14px"></i>
+            Previous
+        </a>
         {% endif %}
 
         {% if posts_of_the_page.has_next %}
-        <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.next_page_number }}">Next</a></li>
+        <a href="?page={{ posts_of_the_page.next_page_number }}" class="pagination-pill">
+            Next
+            <i class="ph-bold ph-caret-right" style="font-size:14px"></i>
+        </a>
         {% endif %}
-    </ul>
-</nav>
+    </div>
+
+</div>
 
 {% endblock %}

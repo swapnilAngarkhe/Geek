@@ -1,0 +1,16 @@
+Django>=4.2,<5.0
+psycopg2-binary
+python-dotenv>=1.0    # for environment variable management
+# gunicorn>=21.0        # WSGI server for production
+whitenoise>=6.0       # static files serving
+requests>=2.31        # for making HTTP requests
+# celery>=5.3           # optional: for background tasks
+# redis>=5.0            # optional: message broker for Celery
+# django-cors-headers>=4.0  # if you're building an API with frontend
+
+
+# dev tools
+django-extensions>=3.2
+ruff
+black
+pytest

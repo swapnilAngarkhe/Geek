@@ -2,123 +2,233 @@
 
 {% block body %}
 
-  <script>
+<script>
 
     function getCookie(name) {
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);
       if (parts.length === 2) return parts.pop().split(';').shift();
-  }
-  
+    }
 
     function submitHandler(id){
-      const textareaValue= document.getElementById(`textarea_${id}`).value 
-      const content= document.getElementById(`content_${id}`);
-      const modal = document.getElementById(`modal_edit_post_${id}`);
-      console.log(textareaValue)
+      const textareaValue = document.getElementById(`textarea_${id}`).value;
+      const content = document.getElementById(`content_${id}`);
       fetch(`/edit/${id}`, {
         method:"POST",
         headers:{"Content-type":"application/json", "X-CSRFToken":getCookie("csrftoken")},
         body:JSON.stringify({
-          content:textareaValue 
+          content:textareaValue
         })
       })
       .then(response => response.json())
-
-      .then(result=> {
+      .then(result => {
         content.innerHTML = result.data;
-        modal.classList.remove('show');
-        modal.setAttribute('aria-hidden', 'true');
-        modal.setAttribute('style', 'display: none');
-
-            // get modal backdrops
-        const modalsBackdrops = document.getElementsByClassName('modal-backdrop');
-
-        // remove every modal backdrop
-        for(let i=0; i<modalsBackdrops.length; i++) {
-        document.body.removeChild(modalsBackdrops[i]);
-            }
-        })
+        closeModal(`modal_edit_post_${id}`);
+      })
     }
 
-  </script>
+    let youLikedPosts = {{ youLiked }};
 
+    function likeHandler(id) {
+        let liked = youLikedPosts.indexOf(id) >= 0;
 
-    <div class="container mx-auto">
-        <div class="row d-flex justify-content-center">
-            <h2 class="col-4">Followers: {{ followers.count }}</h2>
-            <h2 class="col-4">Following: {{ following.count }}</h2>
-            
+        if (liked) {
+            fetch(`/remove_like/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(result.message);
+                document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.remove('liked');
+                document.getElementById(`like-count-${id}`).innerHTML = result.like_count;
+                youLikedPosts.splice(youLikedPosts.indexOf(id), 1);
+            });
+        } else {
+            fetch(`/add_like/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(result.message);
+                document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.add('liked');
+                document.getElementById(`like-count-${id}`).innerHTML = result.like_count;
+                youLikedPosts.push(id);
+            });
+        }
+    }
+
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            document.body.appendChild(modal);
+            requestAnimationFrame(() => modal.classList.add('active'));
+            if (window.locomotiveScroll) window.locomotiveScroll.stop();
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            if (window.locomotiveScroll) window.locomotiveScroll.start();
+        }
+    }
+
+</script>
+
+<!-- Page Container -->
+<div class="max-w-2xl mx-auto px-4 py-8">
+
+    <!-- ========== PROFILE HEADER ========== -->
+    <div data-scroll data-scroll-speed="0.5" class="glass-panel p-8 mb-8">
+        <div class="flex flex-col sm:flex-row items-center gap-6">
+            <!-- Avatar -->
+            <div class="avatar-circle avatar-lg">{{ username.0 }}</div>
+
+            <!-- Info -->
+            <div class="flex-1 text-center sm:text-left">
+                <h1 class="text-2xl font-extrabold tracking-tight text-gray-100">{{ username }}</h1>
+                <p class="font-mono text-sm text-cyan mt-0.5">@{{ username }}</p>
+            </div>
+
+            <!-- Follow / Unfollow -->
             {% if user.is_authenticated %}
                 {% if user != user_profile %}
                     {% if isFollowing %}
-                        <form action="{% url 'unfollow' %}" method="post">
-                            {% csrf_token %}
-                            <input type="hidden" name="userfollow" value="{{ user_profile }}">
-                            <input type="submit" value="Unfollow" class="btn btn-secondary">
-                        </form>
+                    <form action="{% url 'unfollow' %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="userfollow" value="{{ user_profile }}">
+                        <button type="submit" class="btn-outline flex items-center gap-2">
+                            <i class="ph-bold ph-user-minus" style="font-size:16px"></i>
+                            Unfollow
+                        </button>
+                    </form>
                     {% else %}
-                        <form action="{% url 'follow' %}" method="post">
-                            {% csrf_token %}
-                            <input type="hidden" name="userfollow" value="{{ user_profile }}">
-                            <input type="submit" value="Follow" class="btn btn-light">
-                        </form>
+                    <form action="{% url 'follow' %}" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="userfollow" value="{{ user_profile }}">
+                        <button type="submit" class="btn-gradient flex items-center gap-2">
+                            <i class="ph-bold ph-user-plus" style="font-size:16px"></i>
+                            Follow
+                        </button>
+                    </form>
                     {% endif %}
                 {% endif %}
             {% endif %}
         </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 gap-4 mt-6">
+            <div class="stat-card">
+                <div class="stat-number">{{ followers.count }}</div>
+                <div class="stat-label">Followers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ following.count }}</div>
+                <div class="stat-label">Following</div>
+            </div>
+        </div>
     </div>
 
-    <h3 class="mx-5">{{ username }}</h3>
+    <!-- ========== POSTS HEADER ========== -->
+    <div data-scroll class="mb-6">
+        <h2 class="text-xl font-bold text-gray-200 flex items-center gap-2">
+            <i class="ph-duotone ph-article text-cyan" style="font-size:22px"></i>
+            Posts
+        </h2>
+    </div>
 
-    <div class="all-post mx-5 my-3">
+    <!-- ========== POST FEED ========== -->
+    <div class="space-y-5">
         {% for post in posts_of_the_page %}
-        <div class="card text-bg-dark mb-3" style="max-width: 30rem;">
-            <div class="card-header">@{{ post.user }}--------{{ post.date }}</div>
-            <div class="card-body">
-                <p class="card-text" id="content_{{ post.id }}">{{ post.content }}</p>
+        <div data-scroll class="post-card p-5">
+            <!-- Post Header -->
+            <div class="flex items-center gap-3 mb-3">
+                <div class="avatar-circle avatar-sm">{{ post.user.username.0 }}</div>
+                <div class="flex-1 min-w-0">
+                    <span class="font-mono text-sm font-medium text-cyan">@{{ post.user }}</span>
+                    <p class="text-xs text-muted">{{ post.date }}</p>
+                </div>
+
+                <!-- Edit Button (only for own posts) -->
+                {% if user.is_authenticated %}
+                    {% if user == post.user %}
+                    <button onclick="openModal('modal_edit_post_{{ post.id }}')" class="p-2 rounded-lg text-muted hover:text-cyan hover:bg-white/5 transition-all" title="Edit post">
+                        <i class="ph-bold ph-pencil-simple" style="font-size:16px"></i>
+                    </button>
+                    {% endif %}
+                {% endif %}
             </div>
 
-            {% if user.is_authenticated %}
-                {% if user == post.user %}
-                  <div class="d-flex justify-contet-around mx-2 mb-2"> 
-                    <button class="btn btn-light ml-3" data-bs-toggle="modal" data-bs-target="#modal_edit_post_{{ post.id }}"> Edit </button>
-                  </div>
+            <!-- Post Content -->
+            <p class="text-gray-200 text-[15px] leading-relaxed mb-4 pl-12" id="content_{{ post.id }}">{{ post.content }}</p>
 
-                    <div class="modal fade" id="modal_edit_post_{{ post.id }}" tabindex="-1" aria-labelledby="modal_edit_post_{{ post.id }}" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="exampleModalLabel">Edit Geek</h1>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <textarea rows="5" id="textarea_{{ post.id }}" class="forms-control"  name="content">
-                                      {{post.content}}
-                                    </textarea>
-                                </div> 
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="button" class="btn btn-primary" onclick="submitHandler({{ post.id }})">Save changes</button>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Post Footer -->
+            <div class="flex items-center justify-between pl-12">
+                {% if user.is_authenticated %}
+                <div id="like-button-{{ post.id }}" onclick="likeHandler({{ post.id }})" class="like-button">
+                    <div class="heart-bg">
+                        <div class="heart-icon {% if post.id in youLiked %}liked{% endif %}"></div>
                     </div>
+                    <span id="like-count-{{ post.id }}" class="like-count">{{ post.post_like.count }}</span>
+                </div>
                 {% endif %}
-            {% endif %}
+            </div>
         </div>
+
+        <!-- ========== EDIT MODAL (custom, outside scroll) ========== -->
+        {% if user.is_authenticated %}
+            {% if user == post.user %}
+            <div id="modal_edit_post_{{ post.id }}" class="modal-overlay">
+                <div class="modal-backdrop-custom" onclick="closeModal('modal_edit_post_{{ post.id }}')"></div>
+                <div class="modal-content-custom p-6">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                            <i class="ph-duotone ph-pencil-simple-line text-cyan" style="font-size:20px"></i>
+                            Edit Post
+                        </h3>
+                        <button onclick="closeModal('modal_edit_post_{{ post.id }}')" class="p-1.5 rounded-lg text-muted hover:text-gray-200 hover:bg-white/10 transition-all">
+                            <i class="ph-bold ph-x" style="font-size:18px"></i>
+                        </button>
+                    </div>
+                    <textarea rows="5" id="textarea_{{ post.id }}" class="input-dark w-full mb-5" name="content">{{ post.content }}</textarea>
+                    <div class="flex items-center justify-end gap-3">
+                        <button onclick="closeModal('modal_edit_post_{{ post.id }}')" class="btn-outline !py-2 !px-5 text-sm">Cancel</button>
+                        <button onclick="submitHandler({{ post.id }})" class="btn-gradient !py-2 !px-5 text-sm flex items-center gap-2">
+                            <i class="ph-bold ph-check" style="font-size:16px"></i>
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
         {% endfor %}
     </div>
 
-    <nav aria-label="Page navigation example">
-        <ul class="pagination d-flex justify-content-center mu-5">
-            {% if posts_of_the_page.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.previous_page_number }}">Previous</a></li>
-            {% endif %}
+    <!-- ========== PAGINATION ========== -->
+    <div class="flex items-center justify-center gap-4 mt-10 mb-8">
+        {% if posts_of_the_page.has_previous %}
+        <a href="?page={{ posts_of_the_page.previous_page_number }}" class="pagination-pill">
+            <i class="ph-bold ph-caret-left" style="font-size:14px"></i>
+            Previous
+        </a>
+        {% endif %}
 
-            {% if posts_of_the_page.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.next_page_number }}">Next</a></li>
-            {% endif %}
-        </ul>
-    </nav>
+        {% if posts_of_the_page.has_next %}
+        <a href="?page={{ posts_of_the_page.next_page_number }}" class="pagination-pill">
+            Next
+            <i class="ph-bold ph-caret-right" style="font-size:14px"></i>
+        </a>
+        {% endif %}
+    </div>
+
+</div>
+
 {% endblock %}

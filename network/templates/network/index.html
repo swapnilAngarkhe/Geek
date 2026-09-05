@@ -5,97 +5,141 @@
 {% block body %}
 
 <script>
-    function likeHandler(id, youLiked) {
-        let liked = null;
-        if (youLiked.indexOf(id) >= 0) {
-            liked = true;
-        } else {
-            liked = false;
-        }
+    let youLikedPosts = {{ youLiked }};
 
-        if (liked == true) {
+    function likeHandler(id) {
+        let liked = youLikedPosts.indexOf(id) >= 0;
+
+        if (liked) {
             fetch(`/remove_like/${id}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
             .then(response => response.json())
             .then(result => {
-                console.log(result.message);
-                // Update the UI to reflect the change
                 document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.remove('liked');
-                // Remove the post ID from the youLiked array
-                youLiked.splice(youLiked.indexOf(id), 1);
+                document.getElementById(`like-count-${id}`).innerHTML = result.like_count;
+                youLikedPosts.splice(youLikedPosts.indexOf(id), 1);
             });
         } else {
             fetch(`/add_like/${id}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
             .then(response => response.json())
             .then(result => {
-                console.log(result.message);
-                // Update the UI to reflect the change
                 document.getElementById(`like-button-${id}`).querySelector('.heart-icon').classList.add('liked');
-                // Add the post ID to the youLiked array
-                youLiked.push(id);
+                document.getElementById(`like-count-${id}`).innerHTML = result.like_count;
+                youLikedPosts.push(id);
             });
         }
     }
 </script>
 
-<div>
-    <div class='my-3 mx-5'>
-        {% if user.is_authenticated %}
-            <h2>All</h2>
-            <h4>Geek it</h4>
-            <form class='row g-3' action="{% url 'newPost' %}" method='POST'>
-                {% csrf_token %}
-                <div class="col-md-6">
-                    <textarea name="content" class="form-control"></textarea>
-                    <br/>
-                    <input type="submit" value="Post" class="btn btn-primary px-2 py-1">
-                </div>
-            </form>
-        {% endif %}
-    </div>
-</div>
+<div class="max-w-[620px] mx-auto px-5 py-10">
 
-<div class="all-post mx-5 my-3">
-    {% for post in posts_of_the_page %}
-    <div class="card text-bg-dark mb-3" style="max-width: 30rem;">
-        <div class="card-header display-flex">
-            <a href="{% url 'profile' user_id=post.user.id %}">@{{ post.user }}</a>--------{{ post.date }}
+    {% if user.is_authenticated %}
+    <!-- ========== NEW POST ========== -->
+    <div data-scroll class="glass-panel p-6 mb-12">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="avatar-circle avatar-sm">{{ user.username.0 }}</div>
+            <div>
+                <h2 class="text-base font-bold text-bone">What's on your mind?</h2>
+                <p class="text-xs text-slate font-mono font-light">@{{ user.username }}</p>
+            </div>
         </div>
-        <div class="card-body">
-            <p class="card-text">{{ post.content }}</p>
+        <form action="{% url 'newPost' %}" method="POST">
+            {% csrf_token %}
+            <textarea
+                name="content"
+                id="new-post-textarea"
+                class="input-dark w-full mb-3 !bg-surface !text-bright !border-edge"
+                placeholder="Write something..."
+                rows="3"
+                maxlength="180"
+            ></textarea>
+            <div class="flex items-center justify-between">
+                <span id="char-count" class="text-xs text-slate font-mono font-light">0 / 180</span>
+                <button type="submit" class="btn-noir flex items-center gap-2">
+                    <i class="ph ph-arrow-up" style="font-size:14px"></i>
+                    Post
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
 
-            {% if user.is_authenticated %}
-                <!-- Ensure the like status is correctly displayed and updated -->
-                <div id="like-button-{{ post.id }}" onclick="likeHandler({{ post.id }}, {{ youLiked }})" class="like-button">
+    <!-- ========== SECTION TITLE ========== -->
+    <div data-scroll data-scroll-speed="0.3" class="mb-8">
+        <h1 class="text-2xl font-extrabold tracking-tight text-bone">All Posts</h1>
+        <p class="text-sm text-slate font-light mt-1">Latest from the community</p>
+    </div>
+
+    <!-- ========== FEED ========== -->
+    <div class="space-y-4">
+        {% for post in posts_of_the_page %}
+        <div data-scroll class="post-card p-5">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="avatar-circle avatar-sm">{{ post.user.username.0 }}</div>
+                <div class="flex-1 min-w-0">
+                    <a href="{% url 'profile' user_id=post.user.id %}" class="font-mono text-sm font-medium text-bone hover:text-white transition-colors">
+                        @{{ post.user }}
+                    </a>
+                    <p class="text-xs text-slate font-light">{{ post.date }}</p>
+                </div>
+            </div>
+            <p class="text-fog text-[15px] leading-relaxed mb-4 pl-12 font-light">{{ post.content }}</p>
+            <div class="flex items-center pl-12">
+                {% if user.is_authenticated %}
+                <div id="like-button-{{ post.id }}" onclick="likeHandler({{ post.id }})" class="like-button">
                     <div class="heart-bg">
                         <div class="heart-icon {% if post.id in youLiked %}liked{% endif %}"></div>
                     </div>
+                    <span id="like-count-{{ post.id }}" class="like-count">{{ post.post_like.count }}</span>
                 </div>
-            {% endif %}
+                {% else %}
+                <div class="flex items-center gap-2 text-slate text-sm">
+                    <i class="ph ph-heart" style="font-size:16px"></i>
+                    <span class="font-mono text-xs font-light">{{ post.post_like.count }}</span>
+                </div>
+                {% endif %}
+            </div>
         </div>
+        {% empty %}
+        <div data-scroll class="glass-panel p-12 text-center">
+            <p class="text-slate font-light">No posts yet. Be the first.</p>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+
+    <!-- ========== PAGINATION ========== -->
+    <div class="flex items-center justify-center gap-3 mt-12 mb-8">
+        {% if posts_of_the_page.has_previous %}
+        <a href="?page={{ posts_of_the_page.previous_page_number }}" class="pagination-pill">
+            <i class="ph ph-caret-left" style="font-size:12px"></i>
+            Previous
+        </a>
+        {% endif %}
+        {% if posts_of_the_page.has_next %}
+        <a href="?page={{ posts_of_the_page.next_page_number }}" class="pagination-pill">
+            Next
+            <i class="ph ph-caret-right" style="font-size:12px"></i>
+        </a>
+        {% endif %}
+    </div>
+
 </div>
 
-<nav aria-label="Page navigation example">
-    <ul class="pagination justify-content-center mt-5">
-        {% if posts_of_the_page.has_previous %}
-        <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.previous_page_number }}">Previous</a></li>
-        {% endif %}
-
-        {% if posts_of_the_page.has_next %}
-        <li class="page-item"><a class="page-link" href="?page={{ posts_of_the_page.next_page_number }}">Next</a></li>
-        {% endif %}
-    </ul>
-</nav>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('new-post-textarea');
+        const counter = document.getElementById('char-count');
+        if (textarea && counter) {
+            textarea.addEventListener('input', function() {
+                counter.textContent = this.value.length + ' / 180';
+            });
+        }
+    });
+</script>
 
 {% endblock %}
