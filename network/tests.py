@@ -18,5 +18,3 @@ def test_post_creation():
 
     assert post.content == "Hello from pytest!"
     assert post.user == user
-
-
