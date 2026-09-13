@@ -14,3 +14,4 @@ django-extensions>=3.2
 ruff
 black
 pytest
+pytest-django

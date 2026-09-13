@@ -11,13 +11,14 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   django:
+    build: .
     image: geek-django-backend
     ports:
       - "8000:8000"
     env_file:
       - .env
     volumes:
-      - .:/apps
+      - .:/app
       
 volumes:
   postgres-data:
