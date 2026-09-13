@@ -21,3 +21,6 @@ jobs:
 
       - name: RUN RUFF
         run: ruff check .
+      
+      - name: Run Black
+        run: black --check .
