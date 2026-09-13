@@ -18,3 +18,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: RUN RUFF
+        run: ruff check .
