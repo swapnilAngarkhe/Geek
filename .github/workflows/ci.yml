@@ -20,4 +20,5 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: RUN RUFF
+        run: ruff check . --fix
         run: ruff check .

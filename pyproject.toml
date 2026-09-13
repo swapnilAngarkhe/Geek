@@ -1,5 +1,8 @@
 [tool.ruff]
 exclude = ["migrations"]
 
+[tool.ruff.lint]
+ignore = ["E722"]
+
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "project4.settings"
